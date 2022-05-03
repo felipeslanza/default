@@ -10,6 +10,7 @@ sklearn = "*"
 matplotlib = "*"
 flask = "*"
 pyqt5 = "*"
+imbalanced-learn = "*"
 
 [dev-packages]
 ipython = "*"
