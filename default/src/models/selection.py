@@ -1,7 +1,6 @@
 import logging
 
 import numpy as np
-from imblearn.over_sampling import SVMSMOTE, KMeansSMOTE
 from imblearn.combine import SMOTEENN
 from sklearn.ensemble import (
     GradientBoostingClassifier,
@@ -47,25 +46,26 @@ CLASSIFIERS = {
     # ),
     # "decision_tree": DecisionTreeClassifier(max_features=5, random_state=RNG),
     "random_forest": RandomForestClassifier(
-        max_features="log2",
-        max_depth=3,
+        max_features="sqrt",
+        max_depth=6,
         # class_weight="balanced",
+        class_weight={0: 10, 1: 40},
         random_state=RNG,
     ),
-    "gradient_boost": GradientBoostingClassifier(
-        learning_rate=0.1,
-        max_depth=3,
-        random_state=RNG,
-    ),
+    # "gradient_boost": GradientBoostingClassifier(
+    #     learning_rate=0.1,
+    #     max_depth=3,
+    #     random_state=RNG,
+    # ),
 }
-CLASSIFIERS["lr_gb_rf"] = VotingClassifier(
-    estimators=[
-        ("lr", CLASSIFIERS["logistic"]),
-        ("gb", CLASSIFIERS["gradient_boost"]),
-        ("rf", CLASSIFIERS["random_forest"]),
-    ],
-    voting="soft",
-)
+# CLASSIFIERS["lr_gb_rf"] = VotingClassifier(
+#     estimators=[
+#         ("lr", CLASSIFIERS["logistic"]),
+#         ("gb", CLASSIFIERS["gradient_boost"]),
+#         ("rf", CLASSIFIERS["random_forest"]),
+#     ],
+#     voting="soft",
+# )
 
 
 # Setup
@@ -73,15 +73,15 @@ CLASSIFIERS["lr_gb_rf"] = VotingClassifier(
 n_models = len(CLASSIFIERS)
 acc = np.zeros((N_SPLITS, n_models), dtype=np.float64)
 f1 = np.zeros((N_SPLITS, n_models), dtype=np.float64)
-roc_auc = np.zeros((N_SPLITS, n_models), dtype=np.float64)
+pr_auc = np.zeros((N_SPLITS, n_models), dtype=np.float64)
 cm = np.zeros((N_SPLITS, n_models, 2, 2), dtype=np.float16)
 
 df, X, y = setup_features_and_labels(
     kind=DATASET,
-    n_samples=N_SAMPLES,
+    # n_samples=N_SAMPLES,
     random_state=RNG,
 )
-X_trainval, X_test, y_trainval, y_test = train_test_split(
+X_trainval, _, y_trainval, _ = train_test_split(
     X, y, test_size=TEST_SIZE, random_state=RNG
 )
 
@@ -92,7 +92,7 @@ for i, (train_idx, valid_idx) in enumerate(kfold.split(X_trainval, y_trainval)):
     X_train, y_train = X[train_idx], y[train_idx]
     X_valid, y_valid = X[valid_idx], y[valid_idx]
 
-    X_train, y_train = smote.fit_resample(X_train, y_train)
+    # X_train, y_train = smote.fit_resample(X_train, y_train)
 
     for j, (name, model) in enumerate(CLASSIFIERS.items()):
         logger.info(f"Training model {name}")
@@ -100,10 +100,10 @@ for i, (train_idx, valid_idx) in enumerate(kfold.split(X_trainval, y_trainval)):
         y_prob = model.predict_proba(X_valid)
         y_pred = model.predict(X_valid)
 
-        acc[i, j], f1[i, j], _, roc_auc[i], cm[i, j] = get_scores(
+        acc[i, j], f1[i, j], pr_auc[i], _, cm[i, j] = get_scores(
             y_pred, y_prob, y_valid
         ).values()
 
 acc = pd.DataFrame(acc, columns=CLASSIFIERS)
 f1 = pd.DataFrame(f1, columns=CLASSIFIERS)
-ra = pd.DataFrame(roc_auc, columns=CLASSIFIERS)
+auc = pd.DataFrame(pr_auc, columns=CLASSIFIERS)
