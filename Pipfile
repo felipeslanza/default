@@ -11,6 +11,8 @@ matplotlib = "*"
 flask = "*"
 pyqt5 = "*"
 imbalanced-learn = "*"
+joblib = "*"
+boto3 = "*"
 
 [dev-packages]
 ipython = "*"
