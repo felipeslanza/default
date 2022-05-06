@@ -1,9 +1,6 @@
-import boto3
-import joblib
 from flask import Flask, abort, jsonify, request
 
 from .aws import get_model_from_bucket
-from default import settings
 from default.src.data import parse_features_from_dict
 
 
@@ -27,6 +24,9 @@ def force_json_payload():
 def index():
     raw = request.json
     X = parse_features_from_dict(raw)
+    ### TEMP ###
+    breakpoint()
+    ### TEMP ###
     y_prob = model.predict_proba(X)
     obj = {"uuid": raw["uuid"], "prob": y_prob[0][1]}
 

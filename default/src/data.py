@@ -43,7 +43,7 @@ def load_dataset(kind: str = "processed") -> pd.DataFrame:
 def parse_features_from_dict(data: dict, fillna: float = -1.0) -> np.ndarray:
     """Turns data received from API request into a parsed and processed feature vector"""
 
-    raw_df = pd.Series(data).to_frame()
+    raw_df = pd.Series(data).to_frame().T
     to_drop = set()
     for feat, dtype in FEATURES_DTYPES.items():
         if feat in raw_df:
@@ -51,10 +51,9 @@ def parse_features_from_dict(data: dict, fillna: float = -1.0) -> np.ndarray:
         else:
             to_drop.add(feat)
 
-    raw_df.drop(to_drop, axis=1, inplace=True)
-
-    preprocessed_df = prepare_data(raw_df)
-    df = preprocessed_df.drop("default", axis=1).fillna(fillna)
+    raw_df.drop(to_drop, axis=1, errors="ignore", inplace=True)
+    df = prepare_data(raw_df, is_prediction=True)
+    df = df.drop("default", axis=1, errors="ignore").fillna(fillna)
 
     return df.to_numpy()  # shape: (n_feats, 1)
 
@@ -99,14 +98,19 @@ def setup_features_and_labels(
     n_samples: int = 0,
     kind: str = "interim",
     label_col: str = "default",
+    drop_missing: bool = True,
     fillna_X: float = -1,
     random_state: Optional[Union[int, np.random.RandomState]] = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """Load dataset, clean labels and fill missing feature values"""
     df = load_dataset(kind)
-    df = df.loc[df.default.notnull()]
+
+    if drop_missing:
+        df = df.loc[df.default.notnull()]
+
     if n_samples:
         df = df.sample(n_samples, random_state=random_state)
+
     X = df.drop(label_col, axis=1).fillna(fillna_X).to_numpy()
     y = df[label_col].to_numpy()
 

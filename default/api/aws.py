@@ -39,6 +39,7 @@ client = boto3.client(**config)
 
 def create_bucket() -> bool:
     """Util to create a new bucket as specified in `default.settings`"""
+    logger.info(f"Trying to create new bucket named {AWS_S3_BUCKET}")
     try:
         _ = s3.create_bucket(
             Bucket=AWS_S3_BUCKET,
@@ -70,9 +71,11 @@ def upload_model(name: Optional[str] = None) -> bool:
     if not filename.endswith(".joblib"):
         filename = f"{name}.joblib"
 
+    logger.info("Uploading local model {name} to bucket")
     local_model_filepath = f"{ROOT_DIR}/models/{filename}"
     try:
         client.upload_file(Filename=local_model_filepath, Bucket=AWS_S3_BUCKET, Key=name)
+        logger.info("Upload was successful")
         return True
     except client.exceptions.ClientError as e:
         logger.error(f"Failed to upload model - {e}")
@@ -82,8 +85,6 @@ def upload_model(name: Optional[str] = None) -> bool:
 if __name__ == "__main__":
     # Setup model
     # ----
-    _ = create_bucket()
-    try:
-        model = get_model_from_bucket()
-    except Exception as e:
-        upload_model()
+    created_status = create_bucket()
+    upload_status = upload_model()
+    model = get_model_from_bucket()

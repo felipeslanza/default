@@ -1,7 +1,7 @@
 import joblib
 
 from default.constants import ROOT_DIR
-from default.src.data import load_dataset, prepare_data
+from default.src.data import load_dataset, setup_features_and_labels
 
 
 # Settings
@@ -13,19 +13,18 @@ DATASET = "raw"
 if __name__ == "__main__":
     # Setup
     # ----
-    df = load_dataset(DATASET)
-    missing = df.default.isna()
-    missing = missing[missing].index
-
     clf = joblib.load(f"{ROOT_DIR}/models/{MODEL_FILENAME}.joblib")
+
+    df, X, y = setup_features_and_labels(kind="interim", drop_missing=False, fillna_X=-1)
+    missing = df.default.isna()
+    X = X[missing]
+
+    raw_df = load_dataset("raw")
+    missing_uuids = raw_df.loc[missing, "uuid"]
 
     # Forecast
     # ----
-    raw_df = df.loc[missing]
-    interim_df = prepare_data(df, is_prediction=True)
-    X = interim_df.drop("default", axis=1).fillna(-1).to_numpy()
     y_prob = clf.predict_proba(X)
 
-    final = pd.Series(y_prob, index=raw_df.uuid)
-    breakpoint()
-    final.to_csv(f"{ROOT_DIR}/data/output.csv", sep=";")
+    final = pd.DataFrame({"uuid": missing_uuids, "pd": y_prob[:, 1].round(2)})
+    final.to_csv(f"{ROOT_DIR}/data/output/missing.csv", sep=";", index=False)

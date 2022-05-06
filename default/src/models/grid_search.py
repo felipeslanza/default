@@ -21,15 +21,15 @@ GRID_CONFIG = {
             "classification__min_impurity_decrease": [0, 0.05, 0.1],
         },
     ),
-    # "random_forest": (
-    #     RandomForestClassifier(n_estimators=50, random_state=RNG),
-    #     {
-    #         "classification__max_depth": [4, 6, 8, 10],
-    #         "classification__max_features": [5, 10, 15, 20],
-    #         "classification__class_weight": [{1: w} for w in (10, 15, 20, 25)],
-    #         "classification__oob_score": [True, False],
-    #     },
-    # ),
+    "random_forest": (
+        RandomForestClassifier(n_estimators=50, random_state=RNG),
+        {
+            "classification__max_depth": [4, 6, 8, 10],
+            "classification__max_features": [5, 10, 15, 20],
+            "classification__class_weight": [{1: w} for w in (10, 15, 20, 25)],
+            "classification__oob_score": [True, False],
+        },
+    ),
 }
 
 
