@@ -7,7 +7,6 @@ Requirements
 ------------
 
 * `python >= 3.9`
-* `pipenv`
 
 
 Setup
@@ -20,8 +19,9 @@ git clone git@github.com:felipeslanza/default.git
 
 # Setup environment and install dependencies
 cd default
-pipenv install
-pipenv shell
+virtualenv -p python3.9 venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 

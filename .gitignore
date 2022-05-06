@@ -1,5 +1,7 @@
 # Custom
-data/**/*.csv
+data/*.csv
+!data/output/
+!data/meta_features.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
