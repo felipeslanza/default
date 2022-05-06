@@ -25,7 +25,9 @@ def force_json_payload():
 # ===========================================================
 @app.route("/api", methods=["POST"])
 def index():
-    processed_data = parse_features_from_dict(request.json)
-    result = model.predict_proba(processed_data)
+    raw = request.json
+    X = parse_features_from_dict(raw)
+    y_prob = model.predict_proba(X)
+    obj = {"uuid": raw["uuid"], "prob": y_prob[0][1]}
 
-    return jsonify(result), 200
+    return jsonify(obj), 200

@@ -1,6 +1,9 @@
 import logging
+from io import BytesIO
+from typing import Optional
 
 import boto3
+import joblib
 from sklearn.base import ClassifierMixin
 
 from default.constants import ROOT_DIR
@@ -46,18 +49,18 @@ def create_bucket() -> bool:
         logger.warning("Bucket already created")
     except client.exceptions.BucketAlreadyExists:
         logger.error("Bucket name already taken, provide another one.")
+    except client.exceptions.ClientError as e:
+        logger.error(f"Invalid bucket name = {e}.")
 
     return False
 
 
 def get_model_from_bucket() -> ClassifierMixin:
     """Util to load model from bucket"""
-    return joblib.loads(
-        s3.Bucket(AWS_S3_BUCKET)
-        .Object(f"{AWS_S3_DEPLOYED_MODEL_FILENAME}.joblib")
-        .get()["Body"]
-        .read()
-    )
+    with BytesIO() as fp:
+        s3.Bucket(AWS_S3_BUCKET).download_fileobj(AWS_S3_DEPLOYED_MODEL_FILENAME, fp)
+        fp.seek(0)
+        return joblib.load(fp)
 
 
 def upload_model(name: Optional[str] = None) -> bool:
@@ -79,5 +82,8 @@ def upload_model(name: Optional[str] = None) -> bool:
 if __name__ == "__main__":
     # Setup model
     # ----
-    create_bucket()
-    upload_model()
+    _ = create_bucket()
+    try:
+        model = get_model_from_bucket()
+    except Exception as e:
+        upload_model()

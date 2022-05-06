@@ -7,6 +7,7 @@ from sklearn.ensemble import (
     RandomForestClassifier,
     VotingClassifier,
 )
+from sklearn import preprocessing
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.naive_bayes import GaussianNB
@@ -15,57 +16,56 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.utils.class_weight import compute_sample_weight
 
-from default.src.data import setup_features_and_labels, train_valid_test_split
-from default.src.utils import get_scores
 from default.constants import RNG
 from default.settings import N_SAMPLES, TEST_SIZE
+from default.src.data import setup_features_and_labels, train_valid_test_split
+from default.src.utils import get_scores
 
 logger = logging.getLogger(__name__)
 
 
 # Settings
 # ========
-DATASET = "processed"
+DATASET = "interim"
+# DATASET = "processed"
 N_SPLITS = 5
 
 CLASSIFIERS = {
-    "logistic": LogisticRegression(
-        C=1.0,
-        penalty="l2",
-        solver="saga",
-        random_state=RNG,
-    ),
+    # "logistic": LogisticRegression(
+    #     C=1.0,
+    #     penalty="l2",
+    #     solver="saga",
+    #     random_state=RNG,
+    # ),
     # "knn": KNeighborsClassifier(4),
     # "naive_bayes": GaussianNB(),
-    # "neural_net": MLPClassifier(
-    #     alpha=0.1,
-    #     solver="lbfgs",
-    #     max_iter=10_000,
-    #     learning_rate_init=0.001,
-    #     random_state=RNG,
-    # ),
+    #  "neural_net": MLPClassifier(
+    #      alpha=0.1,
+    #      solver="lbfgs",
+    #      max_iter=10_000,
+    #      learning_rate_init=0.001,
+    #      random_state=RNG,
+    #  ),
     # "decision_tree": DecisionTreeClassifier(max_features=5, random_state=RNG),
     "random_forest": RandomForestClassifier(
-        max_features="sqrt",
         max_depth=6,
-        # class_weight="balanced",
-        class_weight={0: 10, 1: 40},
+        max_features=15,
+        class_weight={1: 15},
         random_state=RNG,
     ),
-    # "gradient_boost": GradientBoostingClassifier(
-    #     learning_rate=0.1,
-    #     max_depth=3,
-    #     random_state=RNG,
-    # ),
+    "gradient_boost": GradientBoostingClassifier(
+        max_depth=25,
+        max_features=10,
+        random_state=RNG,
+    ),
 }
-# CLASSIFIERS["lr_gb_rf"] = VotingClassifier(
-#     estimators=[
-#         ("lr", CLASSIFIERS["logistic"]),
-#         ("gb", CLASSIFIERS["gradient_boost"]),
-#         ("rf", CLASSIFIERS["random_forest"]),
-#     ],
-#     voting="soft",
-# )
+#  CLASSIFIERS["gb_rf"] = VotingClassifier(
+#      estimators=[
+#          ("gb", CLASSIFIERS["gradient_boost"]),
+#          ("rf", CLASSIFIERS["random_forest"]),
+#      ],
+#      voting="soft",
+#  )
 
 
 # Setup
@@ -85,14 +85,20 @@ X_trainval, _, y_trainval, _ = train_test_split(
     X, y, test_size=TEST_SIZE, random_state=RNG
 )
 
+scaler = preprocessing.PowerTransformer()
 smote = SMOTEENN(random_state=RNG)
-kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=RNG)
+
+kfold = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=RNG)
 for i, (train_idx, valid_idx) in enumerate(kfold.split(X_trainval, y_trainval)):
     logger.info(f"K-Fold iteration: {i+1}/{N_SPLITS}")
     X_train, y_train = X[train_idx], y[train_idx]
     X_valid, y_valid = X[valid_idx], y[valid_idx]
 
     # X_train, y_train = smote.fit_resample(X_train, y_train)
+
+    scaler.fit(X_train)
+    X_train = scaler.transform(X_train)
+    X_valid = scaler.transform(X_valid)
 
     for j, (name, model) in enumerate(CLASSIFIERS.items()):
         logger.info(f"Training model {name}")

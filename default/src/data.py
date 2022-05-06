@@ -2,7 +2,6 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from sklearn import preprocessing
 from sklearn.model_selection import train_test_split
 
 from default.constants import DATA_DIR, FEATURES_DTYPES
@@ -11,14 +10,15 @@ from default.settings import MAX_MISSING_FEATURE_PCT
 
 __all__ = (
     "load_dataset",
-    "preprocess_data",
+    "parse_features_from_dict",
+    "prepare_data",
     "setup_features_and_labels",
     "train_valid_test_split",
 )
 
 
 # Globals
-VALID_DATASETS = {"raw", "interim", "preprocessed", "processed"}
+VALID_DATASETS = {"raw", "interim", "processed"}
 
 
 def load_dataset(kind: str = "processed") -> pd.DataFrame:
@@ -40,31 +40,64 @@ def load_dataset(kind: str = "processed") -> pd.DataFrame:
     return data
 
 
-def preprocess_data():
-    """Adjust and scale the raw dataset"""
-    df = load_dataset("raw")
+def parse_features_from_dict(data: dict, fillna: float = -1.0) -> np.ndarray:
+    """Turns data received from API request into a parsed and processed feature vector"""
 
-    to_drop = df.isna().mean(axis=0).ge(MAX_MISSING_FEATURE_PCT)
-    to_drop = ["uuid", *to_drop[to_drop].index]
-    df.drop(to_drop, axis=1, inplace=True)
+    raw_df = pd.Series(data).to_frame()
+    to_drop = set()
+    for feat, dtype in FEATURES_DTYPES.items():
+        if feat in raw_df:
+            raw_df[feat] = raw_df[feat].astype(dtype)
+        else:
+            to_drop.add(feat)
+
+    raw_df.drop(to_drop, axis=1, inplace=True)
+
+    preprocessed_df = prepare_data(raw_df)
+    df = preprocessed_df.drop("default", axis=1).fillna(fillna)
+
+    return df.to_numpy()  # shape: (n_feats, 1)
+
+
+def prepare_data(
+    df: Optional[pd.DataFrame] = None, filename: str = "", is_prediction: bool = False
+) -> pd.DataFrame:
+    """Drop unwanted features and scale/encode the remaining ones"""
+    if df is None:
+        df = load_dataset("raw")
+
+    if not is_prediction:
+        to_drop = df.isna().mean(axis=0).ge(MAX_MISSING_FEATURE_PCT)
+        to_drop = ["uuid", *to_drop[to_drop].index]
+    else:
+        to_drop = ["uuid"]
+    df.drop(to_drop, axis=1, inplace=True, errors="ignore")
 
     numerical_cols = df.select_dtypes(np.number).columns
 
     # Convert categorial features
     for col, series in df.select_dtypes("category").iteritems():
-        df[col] = series.cat.codes.replace(-1, np.nan)
-        df[col].fillna(df[col].mode(), inplace=True)
-    df.to_csv(f"{DATA_DIR}/interim.csv", sep=";", index=False)
+        if col != "default":
+            series = series.cat.codes.replace(-1, np.nan)
+            fill = -1 if is_prediction else series.mode().get(0)
+            df[col] = series.fillna(fill)
 
-    # Scale numerical features and downcast
-    scaler = preprocessing.PowerTransformer()
-    df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
-    df.to_csv(f"{DATA_DIR}/preprocessed.csv", sep=";", index=False)
+    # Fill numerical features
+    for col in numerical_cols:
+        fill = -1 if is_prediction else df[col].median()
+        df[col].fillna(fill, inplace=True)
+
+    if filename:
+        if filename.endswith(".csv"):
+            filename = filename[:-4]
+        df.to_csv(f"{DATA_DIR}/{filename}.csv", sep=";", index=False)
+
+    return df
 
 
 def setup_features_and_labels(
     n_samples: int = 0,
-    kind: str = "preprocessed",
+    kind: str = "interim",
     label_col: str = "default",
     fillna_X: float = -1,
     random_state: Optional[Union[int, np.random.RandomState]] = None,
@@ -99,7 +132,6 @@ def train_valid_test_split(
 
 
 if __name__ == "__main__":
-    _ = preprocess_data()
+    _ = prepare_data(filename="interim")
     raw = load_dataset("raw")
     interim = load_dataset("interim")
-    processed = load_dataset("preprocessed")
