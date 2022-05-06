@@ -8,6 +8,7 @@ from default.src.data import parse_features_from_dict
 # Setup & hooks
 # ===========================================================
 app = Flask(__name__)
+app.config["JSON_SORT_KEYS"] = False
 model = get_model_from_bucket()
 
 
@@ -23,11 +24,9 @@ def force_json_payload():
 @app.route("/api", methods=["POST"])
 def index():
     raw = request.json
-    X = parse_features_from_dict(raw)
-    ### TEMP ###
-    breakpoint()
-    ### TEMP ###
+    df = parse_features_from_dict(raw)
+    X = df.round(2).to_numpy()
     y_prob = model.predict_proba(X)
-    obj = {"uuid": raw["uuid"], "prob": y_prob[0][1]}
+    obj = {"uuid": raw["uuid"], "prob": y_prob[0][1].round(2)}
 
     return jsonify(obj), 200

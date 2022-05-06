@@ -31,7 +31,7 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1)
 
     model = MODEL_CLASS(**MODEL_KWARGS)
-    scaler = preprocessing.PowerTransformer()
+    scaler = preprocessing.StandardScaler()
 
     clf = Pipeline([("scaler", scaler), ("classification", model)])
     clf.name = MODEL_NAME

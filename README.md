@@ -32,7 +32,7 @@ user's data. Just make sure you add a `"Content-Type: application/json"` header 
 request, e.g.:
 
 ```shell
-curl -X POST http://127.0.0.1:5000/api \
+curl -X POST https://v11o0q9hbe.execute-api.sa-east-1.amazonaws.com/dev/api \
      -H "Content-Type: application/json" \
      -d "@data/sample_user.json"
 ```

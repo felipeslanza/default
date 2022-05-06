@@ -40,7 +40,7 @@ def load_dataset(kind: str = "processed") -> pd.DataFrame:
     return data
 
 
-def parse_features_from_dict(data: dict, fillna: float = -1.0) -> np.ndarray:
+def parse_features_from_dict(data: dict, fillna: float = -1.0) -> pd.DataFrame:
     """Turns data received from API request into a parsed and processed feature vector"""
 
     raw_df = pd.Series(data).to_frame().T
@@ -55,7 +55,7 @@ def parse_features_from_dict(data: dict, fillna: float = -1.0) -> np.ndarray:
     df = prepare_data(raw_df, is_prediction=True)
     df = df.drop("default", axis=1, errors="ignore").fillna(fillna)
 
-    return df.to_numpy()  # shape: (n_feats, 1)
+    return df  # shape: (n_feats, 1)
 
 
 def prepare_data(
